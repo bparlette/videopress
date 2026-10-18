@@ -1,0 +1,55 @@
+#!/usr/bin/env node
+// videopress — manufacture viral short-form video from the command line.
+import { spawnSync } from "child_process";
+import { fileURLToPath } from "url";
+import path from "path";
+
+const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const PY = process.env.VIDEOPRESS_PYTHON || "python3";
+const [cmd, ...args] = process.argv.slice(2);
+
+const HELP = `videopress — manufacture viral short-form video
+
+  videopress make <episode.json>              clips + VO + captions -> episode.mp4
+  videopress thumbnail "<TEXT>" [--bg img]    high-CTR thumbnail.png
+  videopress transcribe <media>               Whisper transcript + SRT
+  videopress upload <video.mp4> --title T      upload to YouTube via Data API
+  videopress trust                            channel trust-signal check
+  videopress formats                          list locked video formats
+
+Read ORCHESTRATOR.md — it's the one file an AI needs.`;
+
+function runPy(script, pyArgs) {
+  const r = spawnSync(PY, [path.join(ROOT, "lib", script), ...pyArgs], { stdio: "inherit" });
+  process.exit(r.status ?? 1);
+}
+
+switch (cmd) {
+  case "make":
+    if (!args[0]) { console.error("usage: videopress make <episode.json>"); process.exit(1); }
+    runPy("make.py", args);
+    break;
+  case "thumbnail":
+    if (!args[0]) { console.error('usage: videopress thumbnail "<TEXT>" [--bg image]'); process.exit(1); }
+    runPy("thumbnail.py", args);
+    break;
+  case "transcribe":
+    if (!args[0]) { console.error("usage: videopress transcribe <media> [--model base]"); process.exit(1); }
+    runPy("transcribe.py", args);
+    break;
+  case "upload":
+    if (!args[0]) { console.error("usage: videopress upload <video.mp4> --title T [--desc D]"); process.exit(1); }
+    runPy("upload.py", args);
+    break;
+  case "trust":
+    runPy("trust.py", args);
+    break;
+  case "formats": {
+    const { readFileSync } = await import("fs");
+    const f = JSON.parse(readFileSync(path.join(ROOT, "presets", "formats.json"), "utf8"));
+    for (const [k, v] of Object.entries(f)) console.log(`\n## ${k}\n${v.description}`);
+    break;
+  }
+  default:
+    console.log(HELP);
+}
