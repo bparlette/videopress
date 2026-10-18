@@ -30,3 +30,14 @@ Before changing upload cadence, run `videopress trust`. If browse/suggested impr
 - Never put the user's tasks, schedules, conversations, or personal data in any video, script, or transcript. A missed day beats a leaked detail.
 - Never straight-repost clips without transformative commentary. Sources credited in the description.
 - Never upload without the user's explicit go-ahead for that episode.
+
+## The QC gate (before delivery)
+
+The tooling is never the product. Before you hand over any finished video, ask yourself one question: **would a stranger actually watch this?** Not "did the pipeline run" — "would someone stop scrolling for it?"
+
+Fail the gate if the video is:
+- A slideshow — zooming on stills with no real motion, no life between frames
+- Technically assembled but boring — correct captions, correct pacing, nothing worth watching
+- Built around the tools instead of the hook — the method mattered more than the video
+
+If it fails, say so honestly and fix the foundation (real footage, real hook, real sound) before re-rendering. Never ship a video you wouldn't watch.
