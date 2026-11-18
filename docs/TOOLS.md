@@ -48,6 +48,7 @@ Reference for an AI agent manufacturing short-form video. Only specialized tools
 - **When:** Transcribing source clips *before* scripting commentary around them — the audio-first workflow. Also generates caption timing and verifies what was actually said in a clip.
 - **How:** `videopress transcribe clip.mp3` (or `--model small` for better accuracy). Writes `.srt` + prints the transcript. Models: base ~140MB (fast, good enough for captions), small ~460MB, medium ~1.5GB (diminishing returns).
 - **Watch out:** Base model is fast and good enough for captions; large is slower with marginal gains for this use.
+- **Update (Nov 18, 2026):** `tools/transcribe-fw/` (faster-whisper, CPU int8) measured faster and lighter than this torch-based path — WER 0.000 at RTF 0.14 on a real render — and is now the default SRT lane. This entry stays as the fallback. See the mined section at the end of this file.
 
 ## Remotion (code-driven video) — ACTIVE
 - **What:** React-based programmatic video — write components, render MP4. ~300–500MB node_modules.
@@ -77,3 +78,43 @@ Reference for an AI agent manufacturing short-form video. Only specialized tools
 - **When:** Planning Shorts — above all Lanternport's launch clips — before committing to a full build or capture session. Approve, re-stage, or kill the shot on the previz.
 - **How:** Stage the move in Three.js or in the game itself → send through the Gemini video lane (Omni 1.1 Flash) with a re-render-as-live-action instruction → the previz becomes the spec for the real capture.
 - **Watch out:** The previz is a planning spec, never the deliverable — real captured clips are the backbone of every published Short.
+
+## Mined Nov 18, 2026 — @RoundtableSpace "20 repos" list, second pass (all four MEASURED on our own material)
+
+Test material for every verdict below: ReadDash story 073 render (46.96s,
+1080×1920, narration + music bed, known-good SRT as ground truth), run on
+this VM (1.5 vCPU, no GPU). Full trial data: ~/workspace/videopress-tests/.
+
+- **faster-whisper** — https://github.com/SYSTRAN/faster-whisper —
+  **ADOPTED** as `tools/transcribe-fw/`. `small` int8: WER 0.000 vs the
+  ground-truth SRT, RTF 0.136, word-timestamp regrouping reproduces the
+  reference SRT line-for-line. Replaces the Gemini SRT route for ReadDash
+  and is the default transcription lane (see the Whisper entry above).
+  Gotcha: pin `av==14.2.0` — PyAV ≥15 breaks faster-whisper 1.2.1.
+- **Demucs** — https://github.com/facebookresearch/demucs — **ADOPTED**
+  as `tools/stems/`. htdemucs on CPU pulled the music bed out of the test
+  render completely (gap level −28.4 dB → −91.0 dB on the vocals stem)
+  with the narration still transcribing word-perfect; ~3.1× realtime.
+  Use it to isolate voice before re-mixing, transcribing, or silence-cutting.
+- **DeepFilterNet** — https://github.com/Rikorose/DeepFilterNet —
+  **SKIP (not installable here).** No wheel for Python 3.12; the source
+  build requires a Rust/Cargo toolchain. Demucs covers the pipeline's
+  actual speech-cleanup need. Revisit only if a cp312 wheel ships.
+- **auto-editor** — https://github.com/WyattBlue/auto-editor — **MARGINAL,
+  not adopted.** Defaults found almost nothing to cut on the test render
+  (46.96s → 46.13s): its silence threshold can't see "dead air" under a
+  music bed (bed sits at −28 dB, only ~11 dB under speech). With the
+  threshold tuned to 0.15 it cut 46.96s → 18.33s with every word intact
+  (verified by transcription, WER 0.000) — but videopress's manufactured
+  flow has no dead air by construction, and the clipping lane cuts by
+  scene, not silence. Keep in mind for raw talking-head/VOD first passes
+  (ideally after a Demucs vocals pass, which gives it true silence).
+- **video-subtitle-remover** — https://github.com/YaoFANGUK/video-subtitle-remover —
+  **SKIP (couldn't run here).** No PyPI distribution at all; source-only.
+  The repo bundles its inpainting models: a git clone pulled ~50MB in
+  6 min without finishing and the codeload zip was still incomplete at
+  120MB/100s, before a ~260MB PaddlePaddle install and per-frame
+  detection+inpainting at 1080×1920 on 1.5 vCPU. Not viable on this box
+  within any reasonable budget — and our Shorts never burn text in, so
+  the only use would be cleaning third-party source clips. Mac-side or
+  GPU-box candidate if that need ever becomes real.
